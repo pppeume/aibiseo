@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI 비서 민지 - 회의 기록 자동 정리</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      :root {
+        --primary: #6366f1;
+        --primary-light: #e0e7ff;
+        --success: #10b981;
+        --warning: #f59e0b;
+        --danger: #ef4444;
+        --gray-100: #f3f4f6;
+        --gray-200: #e5e7eb;
+        --gray-300: #d1d5db;
+        --gray-600: #4b5563;
+        --gray-700: #374151;
+        --gray-900: #111827;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+        --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1400px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        color: white;
+        margin-bottom: 40px;
+      }
+
+      header h1 {
+        font-size: 2.5em;
+        margin-bottom: 10px;
+        font-weight: 700;
+      }
+
+      header p {
+        font-size: 1.1em;
+        opacity: 0.9;
+      }
+
+      .main-content {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 30px;
+        margin-bottom: 30px;
+      }
+
+      .panel {
+        background: white;
+        border-radius: 12px;
+        box-shadow: var(--shadow-lg);
+        padding: 30px;
+        animation: slideIn 0.3s ease-out;
+      }
+
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .panel h2 {
+        color: var(--gray-900);
+        margin-bottom: 20px;
+        font-size: 1.5em;
+        border-bottom: 2px solid var(--primary-light);
+        padding-bottom: 10px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      label {
+        display: block;
+        color: var(--gray-700);
+        font-weight: 600;
+        margin-bottom: 8px;
+        font-size: 0.95em;
+      }
+
+      input[type='password'],
+      textarea {
+        width: 100%;
+        padding: 12px;
+        border: 1px solid var(--gray-300);
+        border-radius: 8px;
+        font-family: inherit;
+        font-size: 0.95em;
+        transition: border-color 0.2s;
+      }
+
+      input[type='password']:focus,
+      textarea:focus {
+        outline: none;
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px var(--primary-light);
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 200px;
+        font-family: 'Monaco', 'Courier New', monospace;
+        line-height: 1.5;
+      }
+
+      .button-group {
+        display: flex;
+        gap: 12px;
+        margin-top: 20px;
+      }
+
+      button {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        font-size: 0.95em;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .btn-primary {
+        background: var(--primary);
+        color: white;
+      }
+
+      .btn-primary:hover:not(:disabled) {
+        background: #4f46e5;
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
+      }
+
+      .btn-secondary {
+        background: var(--gray-200);
+        color: var(--gray-700);
+      }
+
+      .btn-secondary:hover:not(:disabled) {
+        background: var(--gray-300);
+      }
+
+      button:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .loading {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        color: var(--primary);
+      }
+
+      .spinner {
+        width: 20px;
+        height: 20px;
+        border: 3px solid var(--primary-light);
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .error {
+        background: #fecaca;
+        color: #991b1b;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+        font-size: 0.95em;
+      }
+
+      .success {
+        background: #d1fae5;
+        color: #065f46;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 15px;
+      }
+
+      .result-panel {
+        grid-column: 1 / -1;
+      }
+
+      .result-content {
+        background: var(--gray-100);
+        border-radius: 8px;
+        padding: 20px;
+        line-height: 1.8;
+        font-size: 0.95em;
+        color: var(--gray-900);
+        max-height: 800px;
+        overflow-y: auto;
+      }
+
+      .result-content h2 {
+        color: var(--primary);
+        font-size: 1.3em;
+        margin: 20px 0 10px 0;
+        border-bottom: none;
+      }
+
+      .result-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 15px 0;
+      }
+
+      .result-content th {
+        background: var(--primary);
+        color: white;
+        padding: 10px;
+        text-align: left;
+        font-weight: 600;
+      }
+
+      .result-content td {
+        border: 1px solid var(--gray-300);
+        padding: 10px;
+        background: white;
+      }
+
+      .result-content ul {
+        margin-left: 20px;
+        margin-top: 10px;
+      }
+
+      .result-content li {
+        margin-bottom: 8px;
+      }
+
+      .sample-tabs {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 20px;
+      }
+
+      .tab-btn {
+        padding: 8px 16px;
+        background: var(--gray-200);
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 600;
+        transition: all 0.2s;
+        flex: 1;
+      }
+
+      .tab-btn.active {
+        background: var(--primary);
+        color: white;
+      }
+
+      .tab-btn:hover {
+        transform: translateY(-1px);
+      }
+
+      .info-box {
+        background: var(--primary-light);
+        border-left: 4px solid var(--primary);
+        padding: 15px;
+        border-radius: 6px;
+        margin-bottom: 20px;
+        font-size: 0.9em;
+        color: var(--gray-700);
+      }
+
+      .copy-btn {
+        background: var(--success);
+        color: white;
+        padding: 8px 16px;
+        border: none;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 0.9em;
+        font-weight: 600;
+        margin-top: 15px;
+      }
+
+      .copy-btn:hover {
+        background: #059669;
+      }
+
+      @media (max-width: 1024px) {
+        .main-content {
+          grid-template-columns: 1fr;
+        }
+
+        header h1 {
+          font-size: 2em;
+        }
+      }
+
+      .demo-notice {
+        background: #fef3c7;
+        border-left: 4px solid var(--warning);
+        padding: 12px;
+        border-radius: 6px;
+        margin-top: 15px;
+        font-size: 0.9em;
+        color: #78350f;
+      }
+
+      .emoji-icon {
+        font-size: 1.2em;
+        margin-right: 5px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1><span class="emoji-icon">🤖</span>AI 비서 "민지"</h1>
+        <p>회의 기록을 입력하면 실행할 일 목록으로 자동 변환</p>
+      </header>
+
+      <div class="main-content">
+        <!-- 입력 패널 -->
+        <div class="panel">
+          <h2>📝 회의 기록 입력</h2>
+
+          <div class="info-box">
+            <strong>💡 팁:</strong> 회의 기록, 메모, 이메일 내용 등을 자유로운 형식으로 붙여넣으세요. AI
+            비서가 자동으로 정리해줄 거예요!
+          </div>
+
+          <div id="mode-selector" style="margin-bottom: 20px">
+            <label style="margin-bottom: 10px">사용 모드 선택:</label>
+            <div class="button-group" style="margin-top: 10px">
+              <button class="tab-btn active" data-mode="demo">🚀 데모 모드</button>
+              <button class="tab-btn" data-mode="api">🔑 API 모드</button>
+            </div>
+          </div>
+
+          <!-- 데모 모드 -->
+          <div id="demo-mode">
+            <div class="info-box">
+              <strong>📌 데모 모드:</strong> 미리 준비된 샘플 회의 기록으로 AI 비서의 업무를 체험해보세요.
+              API 키가 필요 없습니다!
+            </div>
+
+            <div class="sample-tabs" style="margin-top: 15px">
+              <button class="tab-btn active" data-test="1">테스트 1: 론칭 회의</button>
+              <button class="tab-btn" data-test="2">테스트 2: 고객 미팅</button>
+              <button class="tab-btn" data-test="3">테스트 3: 팀 회의</button>
+            </div>
+
+            <p style="color: var(--gray-600); margin: 15px 0; font-size: 0.9em">
+              위의 탭을 클릭하여 샘플을 선택하고 "분석하기"를 눌러보세요.
+            </p>
+
+            <button class="btn-primary" id="demo-analyze-btn" style="width: 100%; margin-top: 20px">
+              분석하기
+            </button>
+          </div>
+
+          <!-- API 모드 -->
+          <div id="api-mode" style="display: none">
+            <div class="form-group">
+              <label>Claude API 키</label>
+              <input
+                type="password"
+                id="api-key"
+                placeholder="sk-..."
+                autocomplete="off"
+              />
+              <small style="color: var(--gray-600); display: block; margin-top: 5px">
+                💾 브라우저에 저장되며, 서버로는 전송되지 않습니다.
+              </small>
+            </div>
+
+            <div class="form-group">
+              <label>회의 기록 / 메모</label>
+              <textarea
+                id="memo-input"
+                placeholder="회의 기록, 메모, 이메일 내용 등을 입력하세요...
+예: 7월 8일 오전 10시 제품 론칭 회의...
+
+최소 50자 이상"
+              ></textarea>
+            </div>
+
+            <button class="btn-primary" id="analyze-btn" style="width: 100%">
+              분석하기
+            </button>
+          </div>
+        </div>
+
+        <!-- 결과 패널 -->
+        <div class="panel">
+          <h2>✨ 분석 결과</h2>
+          <div id="result-area">
+            <p style="color: var(--gray-600); text-align: center; padding: 40px 20px">
+              📌 회의 기록을 입력하고 "분석하기"를 클릭하면<br />
+              결과가 여기에 나타납니다.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 전체 너비 결과 패널 -->
+      <div class="panel result-panel" id="full-result" style="display: none">
+        <h2>📋 상세 결과</h2>
+        <div class="result-content" id="result-content"></div>
+        <button class="copy-btn" id="copy-btn">📋 결과 복사</button>
+      </div>
+    </div>
+
+    <script>
+      const API_BASE_URL = '';
+
+      // 로컬 스토리지 관리
+      const storage = {
+        getApiKey: () => localStorage.getItem('minji_api_key') || '',
+        setApiKey: (key) => localStorage.setItem('minji_api_key', key),
+        getMode: () => localStorage.getItem('minji_mode') || 'demo',
+        setMode: (mode) => localStorage.setItem('minji_mode', mode),
+      };
+
+      // 모드 전환
+      document.querySelectorAll('[data-mode]').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          const mode = this.dataset.mode;
+          storage.setMode(mode);
+
+          document.querySelectorAll('[data-mode]').forEach((b) => b.classList.remove('active'));
+          this.classList.add('active');
+
+          document.getElementById('demo-mode').style.display = mode === 'demo' ? 'block' : 'none';
+          document.getElementById('api-mode').style.display = mode === 'api' ? 'block' : 'none';
+        });
+      });
+
+      // 샘플 탭
+      let currentTest = 1;
+      document.querySelectorAll('[data-test]').forEach((btn) => {
+        btn.addEventListener('click', function () {
+          currentTest = this.dataset.test;
+          document.querySelectorAll('[data-test]').forEach((b) => b.classList.remove('active'));
+          this.classList.add('active');
+        });
+      });
+
+      // 분석 함수
+      async function analyzeWithAPI() {
+        const apiKey = document.getElementById('api-key').value.trim();
+        const memoText = document.getElementById('memo-input').value.trim();
+
+        if (!apiKey) {
+          showError('Claude API 키를 입력해주세요.');
+          return;
+        }
+
+        if (!memoText || memoText.length < 50) {
+          showError('회의 기록은 최소 50자 이상이어야 합니다.');
+          return;
+        }
+
+        storage.setApiKey(apiKey);
+        showLoading();
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/analyze`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              memoText: memoText,
+              apiKey: apiKey,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!response.ok) {
+            showError(data.error || '분석 중 오류가 발생했습니다.');
+            return;
+          }
+
+          displayResult(data.result);
+        } catch (error) {
+          showError(`오류: ${error.message}`);
+        }
+      }
+
+      async function analyzeWithDemo() {
+        showLoading();
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/api/demo`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              testIndex: currentTest,
+            }),
+          });
+
+          const data = await response.json();
+
+          if (!data.success) {
+            showError('데모 분석에 실패했습니다.');
+            return;
+          }
+
+          displayResult(data.result, true);
+        } catch (error) {
+          showError(`오류: ${error.message}`);
+        }
+      }
+
+      function displayResult(result, isDemo = false) {
+        const resultArea = document.getElementById('result-area');
+        const fullResult = document.getElementById('full-result');
+        const resultContent = document.getElementById('result-content');
+
+        resultContent.innerHTML = marked(result);
+
+        fullResult.style.display = 'block';
+        resultArea.innerHTML = `<div class="success">✅ 분석 완료! ${isDemo ? '(데모 모드)' : ''}</div>`;
+
+        if (isDemo) {
+          resultArea.innerHTML +=
+            '<div class="demo-notice">💡 이것은 샘플 데이터로 만든 결과입니다. 실제로 Claude API를 사용하려면 API 모드를 선택하세요.</div>';
+        }
+
+        window.scrollTo(0, document.getElementById('full-result').offsetTop - 100);
+      }
+
+      function showError(message) {
+        const resultArea = document.getElementById('result-area');
+        resultArea.innerHTML = `<div class="error">❌ ${message}</div>`;
+        document.getElementById('full-result').style.display = 'none';
+      }
+
+      function showLoading() {
+        const resultArea = document.getElementById('result-area');
+        resultArea.innerHTML =
+          '<div class="loading"><div class="spinner"></div> 분석 중... (약 2-3초 소요)</div>';
+      }
+
+      // 클립보드 복사
+      document.getElementById('copy-btn').addEventListener('click', function () {
+        const text = document.getElementById('result-content').innerText;
+        navigator.clipboard.writeText(text).then(() => {
+          const btn = this;
+          const originalText = btn.textContent;
+          btn.textContent = '✅ 복사 완료!';
+          setTimeout(() => {
+            btn.textContent = originalText;
+          }, 2000);
+        });
+      });
+
+      // 버튼 이벤트
+      document.getElementById('demo-analyze-btn').addEventListener('click', analyzeWithDemo);
+      document.getElementById('analyze-btn').addEventListener('click', analyzeWithAPI);
+
+      // 저장된 API 키 로드
+      const savedApiKey = storage.getApiKey();
+      if (savedApiKey) {
+        document.getElementById('api-key').value = savedApiKey;
+      }
+
+      // 초기 모드 설정
+      const savedMode = storage.getMode();
+      if (savedMode === 'api') {
+        document.querySelector('[data-mode="api"]').click();
+      }
+
+      // Marked.js 라이브러리 로드 (마크다운 렌더링)
+      function marked(text) {
+        // 간단한 마크다운 파싱
+        let html = text
+          .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
+          .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
+          .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
+          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+          .replace(/\*(.*?)\*/g, '<em>$1</em>')
+          .replace(/\n\n/g, '</p><p>')
+          .replace(/^- (.*?)$/gm, '<li>$1</li>')
+          .replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>')
+          .replace(/\n/g, '<br />');
+
+        return '<p>' + html + '</p>';
+      }
+    </script>
+  </body>
+</html>

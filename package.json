@@ -1,0 +1,25 @@
+{
+  "name": "ai-secretary-minji",
+  "version": "1.0.0",
+  "description": "AI 비서 직원 '민지' - 회의 기록을 할 일 목록으로 변환",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "keywords": [
+    "ai-secretary",
+    "meeting-notes",
+    "task-management",
+    "claude-api"
+  ],
+  "author": "AIMAX",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "@anthropic-ai/sdk": "^0.20.0"
+  }
+}
