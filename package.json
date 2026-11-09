@@ -1,25 +1,25 @@
 {
-  "name": "ai-secretary-minji",
+  "name": "kiot-plus-rr",
   "version": "1.0.0",
-  "description": "AI 비서 직원 '민지' - 회의 기록을 할 일 목록으로 변환",
+  "description": "K-IoT PLUS 업무분장(R&R) 업무 기록·체크 웹",
   "type": "module",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js"
   },
   "keywords": [
-    "ai-secretary",
-    "meeting-notes",
     "task-management",
-    "claude-api"
+    "r-and-r",
+    "k-iot-plus"
   ],
   "author": "AIMAX",
   "license": "MIT",
   "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
     "dotenv": "^16.3.1",
-    "@anthropic-ai/sdk": "^0.20.0"
+    "exceljs": "^4.4.0",
+    "express": "^4.18.2",
+    "multer": "^1.4.5-lts.1"
   }
 }
