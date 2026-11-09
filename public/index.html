@@ -1,621 +1,142 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AI 비서 민지 - 회의 기록 자동 정리</title>
-    <style>
-      * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-      }
-
-      :root {
-        --primary: #6366f1;
-        --primary-light: #e0e7ff;
-        --success: #10b981;
-        --warning: #f59e0b;
-        --danger: #ef4444;
-        --gray-100: #f3f4f6;
-        --gray-200: #e5e7eb;
-        --gray-300: #d1d5db;
-        --gray-600: #4b5563;
-        --gray-700: #374151;
-        --gray-900: #111827;
-        --shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-        --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.1);
-      }
-
-      body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        min-height: 100vh;
-        padding: 20px;
-      }
-
-      .container {
-        max-width: 1400px;
-        margin: 0 auto;
-      }
-
-      header {
-        text-align: center;
-        color: white;
-        margin-bottom: 40px;
-      }
-
-      header h1 {
-        font-size: 2.5em;
-        margin-bottom: 10px;
-        font-weight: 700;
-      }
-
-      header p {
-        font-size: 1.1em;
-        opacity: 0.9;
-      }
-
-      .main-content {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 30px;
-        margin-bottom: 30px;
-      }
-
-      .panel {
-        background: white;
-        border-radius: 12px;
-        box-shadow: var(--shadow-lg);
-        padding: 30px;
-        animation: slideIn 0.3s ease-out;
-      }
-
-      @keyframes slideIn {
-        from {
-          opacity: 0;
-          transform: translateY(20px);
-        }
-        to {
-          opacity: 1;
-          transform: translateY(0);
-        }
-      }
-
-      .panel h2 {
-        color: var(--gray-900);
-        margin-bottom: 20px;
-        font-size: 1.5em;
-        border-bottom: 2px solid var(--primary-light);
-        padding-bottom: 10px;
-      }
-
-      .form-group {
-        margin-bottom: 20px;
-      }
-
-      label {
-        display: block;
-        color: var(--gray-700);
-        font-weight: 600;
-        margin-bottom: 8px;
-        font-size: 0.95em;
-      }
-
-      input[type='password'],
-      textarea {
-        width: 100%;
-        padding: 12px;
-        border: 1px solid var(--gray-300);
-        border-radius: 8px;
-        font-family: inherit;
-        font-size: 0.95em;
-        transition: border-color 0.2s;
-      }
-
-      input[type='password']:focus,
-      textarea:focus {
-        outline: none;
-        border-color: var(--primary);
-        box-shadow: 0 0 0 3px var(--primary-light);
-      }
-
-      textarea {
-        resize: vertical;
-        min-height: 200px;
-        font-family: 'Monaco', 'Courier New', monospace;
-        line-height: 1.5;
-      }
-
-      .button-group {
-        display: flex;
-        gap: 12px;
-        margin-top: 20px;
-      }
-
-      button {
-        flex: 1;
-        padding: 12px 20px;
-        border: none;
-        border-radius: 8px;
-        font-weight: 600;
-        font-size: 0.95em;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-
-      .btn-primary {
-        background: var(--primary);
-        color: white;
-      }
-
-      .btn-primary:hover:not(:disabled) {
-        background: #4f46e5;
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(99, 102, 241, 0.3);
-      }
-
-      .btn-secondary {
-        background: var(--gray-200);
-        color: var(--gray-700);
-      }
-
-      .btn-secondary:hover:not(:disabled) {
-        background: var(--gray-300);
-      }
-
-      button:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-      }
-
-      .loading {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        color: var(--primary);
-      }
-
-      .spinner {
-        width: 20px;
-        height: 20px;
-        border: 3px solid var(--primary-light);
-        border-top-color: var(--primary);
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-      }
-
-      @keyframes spin {
-        to {
-          transform: rotate(360deg);
-        }
-      }
-
-      .error {
-        background: #fecaca;
-        color: #991b1b;
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 15px;
-        font-size: 0.95em;
-      }
-
-      .success {
-        background: #d1fae5;
-        color: #065f46;
-        padding: 12px;
-        border-radius: 8px;
-        margin-bottom: 15px;
-      }
-
-      .result-panel {
-        grid-column: 1 / -1;
-      }
-
-      .result-content {
-        background: var(--gray-100);
-        border-radius: 8px;
-        padding: 20px;
-        line-height: 1.8;
-        font-size: 0.95em;
-        color: var(--gray-900);
-        max-height: 800px;
-        overflow-y: auto;
-      }
-
-      .result-content h2 {
-        color: var(--primary);
-        font-size: 1.3em;
-        margin: 20px 0 10px 0;
-        border-bottom: none;
-      }
-
-      .result-content table {
-        width: 100%;
-        border-collapse: collapse;
-        margin: 15px 0;
-      }
-
-      .result-content th {
-        background: var(--primary);
-        color: white;
-        padding: 10px;
-        text-align: left;
-        font-weight: 600;
-      }
-
-      .result-content td {
-        border: 1px solid var(--gray-300);
-        padding: 10px;
-        background: white;
-      }
-
-      .result-content ul {
-        margin-left: 20px;
-        margin-top: 10px;
-      }
-
-      .result-content li {
-        margin-bottom: 8px;
-      }
-
-      .sample-tabs {
-        display: flex;
-        gap: 10px;
-        margin-bottom: 20px;
-      }
-
-      .tab-btn {
-        padding: 8px 16px;
-        background: var(--gray-200);
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 600;
-        transition: all 0.2s;
-        flex: 1;
-      }
-
-      .tab-btn.active {
-        background: var(--primary);
-        color: white;
-      }
-
-      .tab-btn:hover {
-        transform: translateY(-1px);
-      }
-
-      .info-box {
-        background: var(--primary-light);
-        border-left: 4px solid var(--primary);
-        padding: 15px;
-        border-radius: 6px;
-        margin-bottom: 20px;
-        font-size: 0.9em;
-        color: var(--gray-700);
-      }
-
-      .copy-btn {
-        background: var(--success);
-        color: white;
-        padding: 8px 16px;
-        border: none;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 0.9em;
-        font-weight: 600;
-        margin-top: 15px;
-      }
-
-      .copy-btn:hover {
-        background: #059669;
-      }
-
-      @media (max-width: 1024px) {
-        .main-content {
-          grid-template-columns: 1fr;
-        }
-
-        header h1 {
-          font-size: 2em;
-        }
-      }
-
-      .demo-notice {
-        background: #fef3c7;
-        border-left: 4px solid var(--warning);
-        padding: 12px;
-        border-radius: 6px;
-        margin-top: 15px;
-        font-size: 0.9em;
-        color: #78350f;
-      }
-
-      .emoji-icon {
-        font-size: 1.2em;
-        margin-right: 5px;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <header>
-        <h1><span class="emoji-icon">🤖</span>AI 비서 "민지"</h1>
-        <p>회의 기록을 입력하면 실행할 일 목록으로 자동 변환</p>
-      </header>
-
-      <div class="main-content">
-        <!-- 입력 패널 -->
-        <div class="panel">
-          <h2>📝 회의 기록 입력</h2>
-
-          <div class="info-box">
-            <strong>💡 팁:</strong> 회의 기록, 메모, 이메일 내용 등을 자유로운 형식으로 붙여넣으세요. AI
-            비서가 자동으로 정리해줄 거예요!
-          </div>
-
-          <div id="mode-selector" style="margin-bottom: 20px">
-            <label style="margin-bottom: 10px">사용 모드 선택:</label>
-            <div class="button-group" style="margin-top: 10px">
-              <button class="tab-btn active" data-mode="demo">🚀 데모 모드</button>
-              <button class="tab-btn" data-mode="api">🔑 API 모드</button>
-            </div>
-          </div>
-
-          <!-- 데모 모드 -->
-          <div id="demo-mode">
-            <div class="info-box">
-              <strong>📌 데모 모드:</strong> 미리 준비된 샘플 회의 기록으로 AI 비서의 업무를 체험해보세요.
-              API 키가 필요 없습니다!
-            </div>
-
-            <div class="sample-tabs" style="margin-top: 15px">
-              <button class="tab-btn active" data-test="1">테스트 1: 론칭 회의</button>
-              <button class="tab-btn" data-test="2">테스트 2: 고객 미팅</button>
-              <button class="tab-btn" data-test="3">테스트 3: 팀 회의</button>
-            </div>
-
-            <p style="color: var(--gray-600); margin: 15px 0; font-size: 0.9em">
-              위의 탭을 클릭하여 샘플을 선택하고 "분석하기"를 눌러보세요.
-            </p>
-
-            <button class="btn-primary" id="demo-analyze-btn" style="width: 100%; margin-top: 20px">
-              분석하기
-            </button>
-          </div>
-
-          <!-- API 모드 -->
-          <div id="api-mode" style="display: none">
-            <div class="form-group">
-              <label>Claude API 키</label>
-              <input
-                type="password"
-                id="api-key"
-                placeholder="sk-..."
-                autocomplete="off"
-              />
-              <small style="color: var(--gray-600); display: block; margin-top: 5px">
-                💾 브라우저에 저장되며, 서버로는 전송되지 않습니다.
-              </small>
-            </div>
-
-            <div class="form-group">
-              <label>회의 기록 / 메모</label>
-              <textarea
-                id="memo-input"
-                placeholder="회의 기록, 메모, 이메일 내용 등을 입력하세요...
-예: 7월 8일 오전 10시 제품 론칭 회의...
-
-최소 50자 이상"
-              ></textarea>
-            </div>
-
-            <button class="btn-primary" id="analyze-btn" style="width: 100%">
-              분석하기
-            </button>
-          </div>
-        </div>
-
-        <!-- 결과 패널 -->
-        <div class="panel">
-          <h2>✨ 분석 결과</h2>
-          <div id="result-area">
-            <p style="color: var(--gray-600); text-align: center; padding: 40px 20px">
-              📌 회의 기록을 입력하고 "분석하기"를 클릭하면<br />
-              결과가 여기에 나타납니다.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 전체 너비 결과 패널 -->
-      <div class="panel result-panel" id="full-result" style="display: none">
-        <h2>📋 상세 결과</h2>
-        <div class="result-content" id="result-content"></div>
-        <button class="copy-btn" id="copy-btn">📋 결과 복사</button>
-      </div>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>K-IoT PLUS 업무관리</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="top">
+    <h1>K-IoT PLUS 업무관리</h1>
+    <nav id="nav">
+      <button data-view="templates" class="on">① 업무 표준</button>
+      <button data-view="tasks">② 업무 처리</button>
+      <button data-view="calendar">③ 달력</button>
+      <button data-view="people">④ 개인별 현황</button>
+      <button data-view="settings">⚙ 기준정보</button>
+    </nav>
+    <div class="userbox">
+      <span>사용자</span>
+      <select id="currentUser" title="로그인 기능이 없으므로 본인 이름을 선택하세요"></select>
+      <button class="bell" id="bellBtn" title="알림">🔔<span class="cnt" id="bellCnt" hidden></span></button>
     </div>
+    <div class="notif-panel" id="notifPanel" hidden></div>
+  </header>
 
-    <script>
-      const API_BASE_URL = '';
+  <main>
+    <!-- ① 업무 표준 -->
+    <section class="view on" id="view-templates">
+      <h2>업무 표준 (업무 리스트)</h2>
+      <p class="desc">업무분장(R&amp;R)의 대·중·소분류 업무를 주기별로 등록합니다. 주기 업무는 <b>확정(활성)</b>되면 기준일·주기에 따라 업무가 자동 생성되어 담당자에게 전달되고, 발생 시 업무는 <b>[발생 등록]</b>으로 생성합니다.</p>
+      <div class="tabs" id="tplTabs"></div>
+      <div class="toolbar">
+        <input type="text" id="tplSearch" placeholder="업무명·분류 검색" />
+        <select id="tplCat1"><option value="">대분류 전체</option></select>
+        <select id="tplMember"><option value="">담당자 전체</option></select>
+        <select id="tplState">
+          <option value="">상태 전체</option><option value="active">사용(확정)</option><option value="review">기준일 확인 필요</option><option value="off">중지</option>
+        </select>
+        <span class="sp"></span>
+        <button class="btn" id="tplActivate">선택 확정(사용)</button>
+        <button class="btn" id="tplDeactivate">선택 중지</button>
+        <button class="btn primary" id="tplNew">+ 업무 등록</button>
+      </div>
+      <div class="tbl-wrap"><table class="grid" id="tplTable"></table></div>
+    </section>
 
-      // 로컬 스토리지 관리
-      const storage = {
-        getApiKey: () => localStorage.getItem('minji_api_key') || '',
-        setApiKey: (key) => localStorage.setItem('minji_api_key', key),
-        getMode: () => localStorage.getItem('minji_mode') || 'demo',
-        setMode: (mode) => localStorage.setItem('minji_mode', mode),
-      };
+    <!-- ② 업무 처리 -->
+    <section class="view" id="view-tasks">
+      <h2>업무 처리</h2>
+      <p class="desc">생성·전달된 업무입니다. 행을 누르면 처리기한·완료여부 입력, 처리 현황 기록, 파일 업로드를 할 수 있습니다.</p>
+      <div class="toolbar">
+        <label>담당자 <select id="tkMember"></select></label>
+        <label>역할 <select id="tkRole"><option value="">메인+서브</option><option value="main">메인</option><option value="sub">서브</option></select></label>
+        <label>상태 <select id="tkStatus"><option value="">전체</option><option>예정</option><option>진행중</option><option>완료</option><option>지연</option><option value="open">미완료(예정+진행중)</option></select></label>
+        <label>업무구분 <select id="tkCycle"><option value="">전체</option></select></label>
+        <label>처리기한 <input type="date" id="tkFrom" /> ~ <input type="date" id="tkTo" /></label>
+        <input type="text" id="tkSearch" placeholder="업무명 검색" />
+        <span class="sp"></span>
+        <button class="btn" id="tkReset">조건 초기화</button>
+      </div>
+      <div class="tbl-wrap"><table class="grid" id="tkTable"></table></div>
+    </section>
 
-      // 모드 전환
-      document.querySelectorAll('[data-mode]').forEach((btn) => {
-        btn.addEventListener('click', function () {
-          const mode = this.dataset.mode;
-          storage.setMode(mode);
+    <!-- ③ 달력 -->
+    <section class="view" id="view-calendar">
+      <h2>업무 달력</h2>
+      <p class="desc">계획(아직 생성 전인 주기 업무) · 예정 · 진행중 · 완료를 처리기한 날짜에 표시합니다. 처리기한이 지난 미완료 업무는 빨간색(지연)으로 표시됩니다.</p>
+      <div class="cal-head">
+        <button class="btn" id="calPrev">◀</button>
+        <div class="ttl" id="calTitle"></div>
+        <button class="btn" id="calNext">▶</button>
+        <button class="btn" id="calToday">오늘</button>
+        <label class="hint">담당자 <select id="calMember"></select></label>
+        <label class="hint">역할 <select id="calRole"><option value="">메인+서브</option><option value="main">메인</option><option value="sub">서브</option></select></label>
+        <span style="flex:1"></span>
+        <div class="legend" id="calLegend"></div>
+      </div>
+      <div class="cal" id="cal"></div>
+    </section>
 
-          document.querySelectorAll('[data-mode]').forEach((b) => b.classList.remove('active'));
-          this.classList.add('active');
+    <!-- ④ 개인별 현황 -->
+    <section class="view" id="view-people">
+      <h2>개인별 업무 현황</h2>
+      <p class="desc">기간 내 처리기한 기준으로 담당자별 계획·예정·진행중·완료·지연 건수를 집계합니다. 이름을 누르면 개인 업무 보드가 표시됩니다.</p>
+      <div class="toolbar">
+        <label>기간 <select id="pPeriod">
+          <option value="thisMonth">이번 달</option><option value="thisWeek">이번 주</option><option value="nextMonth">다음 달</option><option value="thisQuarter">이번 분기</option><option value="custom">직접 입력</option>
+        </select></label>
+        <input type="date" id="pFrom" /> ~ <input type="date" id="pTo" />
+        <label>역할 <select id="pRole"><option value="">메인+서브</option><option value="main">메인</option><option value="sub">서브</option></select></label>
+      </div>
+      <div class="tbl-wrap" style="margin-bottom:16px"><table class="grid summary" id="pSummary"></table></div>
+      <h3 id="pBoardTitle" style="margin:8px 0"></h3>
+      <div class="kpis" id="pKpis"></div>
+      <div class="board" id="pBoard"></div>
+    </section>
 
-          document.getElementById('demo-mode').style.display = mode === 'demo' ? 'block' : 'none';
-          document.getElementById('api-mode').style.display = mode === 'api' ? 'block' : 'none';
-        });
-      });
+    <!-- ⚙ 기준정보 -->
+    <section class="view" id="view-settings">
+      <h2>기준정보</h2>
+      <p class="desc">담당자 관리, 업무분장(R&amp;R) 엑셀 가져오기, 주기 업무 생성 실행</p>
+      <div class="card">
+        <h3 style="margin-top:0">1. 업무분장(R&amp;R) 엑셀 가져오기</h3>
+        <p class="hint">'업무분장(R&amp;R)' 시트의 대분류·중분류·소분류·상세 업무·자동화 여부·담당자(★ 메인 / ○ 공동수행)·수행 주기·비고를 읽어 업무 표준으로 등록합니다.
+          같은 대·중·소분류 업무가 이미 있으면 내용을 갱신합니다. 엑셀에는 기준일이 없으므로 주기 업무는 <b>기준일 제안값</b>으로 채워 <b>'기준일 확인 필요'</b> 상태로 등록되며, 확인 후 확정해야 업무가 생성됩니다.</p>
+        <div class="row"><input type="file" id="xlsFile" accept=".xlsx" /><button class="btn primary" id="xlsImport">가져오기</button></div>
+        <div id="xlsResult"></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">2. 담당자</h3>
+        <div class="row" style="margin-bottom:10px">
+          <input type="text" id="mName" placeholder="성명" />
+          <input type="text" id="mTitle" placeholder="직책" />
+          <input type="text" id="mRole" placeholder="주요 역할" style="flex:1;min-width:200px" />
+          <button class="btn primary" id="mAdd">추가</button>
+        </div>
+        <div class="tbl-wrap"><table class="grid" id="mTable"></table></div>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">3. 주기 업무 생성</h3>
+        <p class="hint">서버는 기동 시와 1시간마다 자동으로 실행합니다. 각 회차는 <b>발생일 − 사전 생성 일수</b>가 되는 날 생성되어 담당자 알림함으로 전달됩니다.</p>
+        <button class="btn" id="genNow">지금 생성 실행</button> <span id="genResult" class="hint"></span>
+      </div>
+      <div class="card">
+        <h3 style="margin-top:0">상태 정의</h3>
+        <div class="state-def">
+          <span class="badge st-계획">계획</span><span>확정된 주기 업무 중 아직 생성 시점이 도래하지 않은 미래 회차 (달력·현황에서 예측 표시, 자동 생성 대상)</span>
+          <span class="badge st-예정">예정</span><span>업무가 생성되어 담당자에게 전달되었으나 아직 착수 전</span>
+          <span class="badge st-진행중">진행중</span><span>처리 현황이 입력되었거나 담당자가 진행중으로 변경한 업무</span>
+          <span class="badge st-완료">완료</span><span>담당자가 완료 처리한 업무</span>
+          <span class="badge st-지연">지연</span><span>처리기한이 지났는데 완료되지 않은 업무 (예정·진행중에 추가로 표시)</span>
+        </div>
+      </div>
+    </section>
+  </main>
 
-      // 샘플 탭
-      let currentTest = 1;
-      document.querySelectorAll('[data-test]').forEach((btn) => {
-        btn.addEventListener('click', function () {
-          currentTest = this.dataset.test;
-          document.querySelectorAll('[data-test]').forEach((b) => b.classList.remove('active'));
-          this.classList.add('active');
-        });
-      });
-
-      // 분석 함수
-      async function analyzeWithAPI() {
-        const apiKey = document.getElementById('api-key').value.trim();
-        const memoText = document.getElementById('memo-input').value.trim();
-
-        if (!apiKey) {
-          showError('Claude API 키를 입력해주세요.');
-          return;
-        }
-
-        if (!memoText || memoText.length < 50) {
-          showError('회의 기록은 최소 50자 이상이어야 합니다.');
-          return;
-        }
-
-        storage.setApiKey(apiKey);
-        showLoading();
-
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/analyze`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              memoText: memoText,
-              apiKey: apiKey,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (!response.ok) {
-            showError(data.error || '분석 중 오류가 발생했습니다.');
-            return;
-          }
-
-          displayResult(data.result);
-        } catch (error) {
-          showError(`오류: ${error.message}`);
-        }
-      }
-
-      async function analyzeWithDemo() {
-        showLoading();
-
-        try {
-          const response = await fetch(`${API_BASE_URL}/api/demo`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              testIndex: currentTest,
-            }),
-          });
-
-          const data = await response.json();
-
-          if (!data.success) {
-            showError('데모 분석에 실패했습니다.');
-            return;
-          }
-
-          displayResult(data.result, true);
-        } catch (error) {
-          showError(`오류: ${error.message}`);
-        }
-      }
-
-      function displayResult(result, isDemo = false) {
-        const resultArea = document.getElementById('result-area');
-        const fullResult = document.getElementById('full-result');
-        const resultContent = document.getElementById('result-content');
-
-        resultContent.innerHTML = marked(result);
-
-        fullResult.style.display = 'block';
-        resultArea.innerHTML = `<div class="success">✅ 분석 완료! ${isDemo ? '(데모 모드)' : ''}</div>`;
-
-        if (isDemo) {
-          resultArea.innerHTML +=
-            '<div class="demo-notice">💡 이것은 샘플 데이터로 만든 결과입니다. 실제로 Claude API를 사용하려면 API 모드를 선택하세요.</div>';
-        }
-
-        window.scrollTo(0, document.getElementById('full-result').offsetTop - 100);
-      }
-
-      function showError(message) {
-        const resultArea = document.getElementById('result-area');
-        resultArea.innerHTML = `<div class="error">❌ ${message}</div>`;
-        document.getElementById('full-result').style.display = 'none';
-      }
-
-      function showLoading() {
-        const resultArea = document.getElementById('result-area');
-        resultArea.innerHTML =
-          '<div class="loading"><div class="spinner"></div> 분석 중... (약 2-3초 소요)</div>';
-      }
-
-      // 클립보드 복사
-      document.getElementById('copy-btn').addEventListener('click', function () {
-        const text = document.getElementById('result-content').innerText;
-        navigator.clipboard.writeText(text).then(() => {
-          const btn = this;
-          const originalText = btn.textContent;
-          btn.textContent = '✅ 복사 완료!';
-          setTimeout(() => {
-            btn.textContent = originalText;
-          }, 2000);
-        });
-      });
-
-      // 버튼 이벤트
-      document.getElementById('demo-analyze-btn').addEventListener('click', analyzeWithDemo);
-      document.getElementById('analyze-btn').addEventListener('click', analyzeWithAPI);
-
-      // 저장된 API 키 로드
-      const savedApiKey = storage.getApiKey();
-      if (savedApiKey) {
-        document.getElementById('api-key').value = savedApiKey;
-      }
-
-      // 초기 모드 설정
-      const savedMode = storage.getMode();
-      if (savedMode === 'api') {
-        document.querySelector('[data-mode="api"]').click();
-      }
-
-      // Marked.js 라이브러리 로드 (마크다운 렌더링)
-      function marked(text) {
-        // 간단한 마크다운 파싱
-        let html = text
-          .replace(/^### (.*?)$/gm, '<h3>$1</h3>')
-          .replace(/^## (.*?)$/gm, '<h2>$1</h2>')
-          .replace(/^# (.*?)$/gm, '<h1>$1</h1>')
-          .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*(.*?)\*/g, '<em>$1</em>')
-          .replace(/\n\n/g, '</p><p>')
-          .replace(/^- (.*?)$/gm, '<li>$1</li>')
-          .replace(/(<li>.*?<\/li>)/s, '<ul>$1</ul>')
-          .replace(/\n/g, '<br />');
-
-        return '<p>' + html + '</p>';
-      }
-    </script>
-  </body>
+  <div id="modalRoot"></div>
+  <div id="drawerRoot"></div>
+  <script src="app.js"></script>
+</body>
 </html>
