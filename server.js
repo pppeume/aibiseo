@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import { Anthropic } from '@anthropic-ai/sdk';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
+import rrRouter, { startScheduler } from './rr/routes.js';
 
 dotenv.config();
 
@@ -16,6 +17,9 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static('public'));
+
+// K-IoT PLUS 업무관리(R&R) – 화면: /rr/
+app.use('/api/rr', rrRouter);
 
 // AI 비서 프롬프트
 const SECRETARY_PROMPT = `너는 회의 내용과 메모를 읽고 실행 계획으로 정리하는 AI 비서 민지다.
@@ -266,4 +270,6 @@ AI 직원 플랫폼의 정식 론칭을 8월 1일로 최종 결정하고 상세�
 app.listen(port, () => {
   console.log(`🤖 AI 비서 "민지" 서버 시작: http://localhost:${port}`);
   console.log('📋 웹 브라우저에서 접속해주세요!');
+  console.log(`🗂️  업무관리(R&R): http://localhost:${port}/rr/`);
+  startScheduler();
 });
