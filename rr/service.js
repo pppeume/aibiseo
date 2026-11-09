@@ -51,6 +51,25 @@ export function deleteMember(id) {
   save();
   return { deleted: true };
 }
+// 로그인 계정(claude.ai 사용자 ID 등 불투명 ID)과 담당자 연결 — 한 계정은 한 담당자에만 연결
+export function linkMember(id, userId) {
+  const db = getDb();
+  const m = db.members.find((x) => x.id === id);
+  if (!m) throw notFound('담당자');
+  const uid = str(userId, 200);
+  if (!uid) throw bad('연결할 계정 정보가 없습니다.');
+  for (const x of db.members) if (x.userId === uid && x.id !== id) delete x.userId;
+  m.userId = uid;
+  save();
+  return m;
+}
+export function unlinkMember(id) {
+  const m = getDb().members.find((x) => x.id === id);
+  if (!m) throw notFound('담당자');
+  delete m.userId;
+  save();
+  return m;
+}
 const memberIds = (arr, label) => {
   const ids = [...new Set((Array.isArray(arr) ? arr : []).map(String))];
   const known = new Set(getDb().members.map((m) => m.id));

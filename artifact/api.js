@@ -10,9 +10,17 @@ const MAX_FILE_MB = 15;
 
 let assets = null;
 let downloads = null;
+let identity = null;
 export async function initCapabilities() {
   const use = (n) => (globalThis.claude?.use ? globalThis.claude.use(n).catch(() => null) : Promise.resolve(null));
-  [assets, downloads] = await Promise.all([use('assets'), use('downloads')]);
+  let user;
+  [assets, downloads, user] = await Promise.all([use('assets'), use('downloads'), use('user')]);
+  if (user) {
+    // 로그인 정보: 저장은 불투명 ID만, 이름·이메일은 화면 표시용
+    const me = await user.me();
+    if (me?.id) identity = { id: me.id, name: me.name || '', email: me.email || '', canEdit: !!me.canEdit };
+  }
+  return identity;
 }
 
 const actor = (h) => (svc.listMembers().some((m) => m.id === h) ? h : null);
@@ -91,6 +99,16 @@ async function route(method, path, query, body, hdr) {
   if (is('POST', 'members')) return svc.addMember(body || {});
   if (is('PUT', 'members', '*')) return svc.updateMember(seg[1], body || {});
   if (is('DELETE', 'members', '*')) return svc.deleteMember(seg[1]);
+  if (is('POST', 'members', '*', 'link')) {
+    // 브라우저 버전: 현재 로그인한 본인 계정만 연결 가능
+    if (!identity?.id || body?.userId !== identity.id) throw new svc.HttpError(400, '본인 계정만 연결할 수 있습니다.');
+    return svc.linkMember(seg[1], identity.id);
+  }
+  if (is('POST', 'members', '*', 'unlink')) {
+    const m = svc.listMembers().find((x) => x.id === seg[1]);
+    if (m?.userId && m.userId !== identity?.id && !identity?.canEdit) throw new svc.HttpError(400, '다른 사람의 계정 연결은 편집 권한이 있는 사람만 해제할 수 있습니다.');
+    return svc.unlinkMember(seg[1]);
+  }
   if (is('GET', 'templates')) return svc.listTemplates();
   if (is('POST', 'templates')) return svc.createTemplate(body || {});
   if (is('POST', 'templates', 'bulk-active')) return svc.setTemplatesActive(body?.ids, body?.active);

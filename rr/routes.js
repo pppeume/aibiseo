@@ -45,6 +45,8 @@ router.get('/members', wrap(() => svc.listMembers()));
 router.post('/members', wrap((req) => svc.addMember(req.body || {})));
 router.put('/members/:id', wrap((req) => svc.updateMember(req.params.id, req.body || {})));
 router.delete('/members/:id', wrap((req) => svc.deleteMember(req.params.id)));
+router.post('/members/:id/link', wrap((req) => svc.linkMember(req.params.id, req.body?.userId)));
+router.post('/members/:id/unlink', wrap((req) => svc.unlinkMember(req.params.id)));
 
 // 업무 표준
 router.get('/templates', wrap(() => svc.listTemplates()));
