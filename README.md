@@ -63,3 +63,12 @@ npm test
 ├── public/              # 화면 (index.html, app.js, style.css)
 └── test/                # 단위 테스트
 ```
+
+## 웹페이지(claude.ai) 버전
+
+설치 없이 링크로 여는 버전입니다. 같은 화면(`public/`)과 업무 로직(`rr/`)을 브라우저 안에서 실행하고, 데이터는 claude.ai 아티팩트의 공유 저장소, 첨부 파일은 아티팩트 파일 저장소에 보관합니다.
+
+- 빌드: `npm run build:web` → `artifact/dist/kiot-rr.html` (한 파일)
+- 구성: `artifact/browser-store.js`(저장소), `artifact/api.js`(브라우저용 `/api/rr`), `artifact/main.js`(시작점)
+- 주기 업무는 누군가 페이지를 열어 둔 동안 생성됩니다(열 때 즉시 + 1시간마다).
+- 첨부 파일은 파일당 15MB까지. pdf·이미지·csv·txt 외 형식(xlsx, docx 등)은 텍스트로 감싸 저장하고 내려받을 때 원래 파일로 복원합니다.

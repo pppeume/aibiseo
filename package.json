@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --test test/*.test.js"
+    "test": "node --test test/*.test.js",
+    "build:web": "node artifact/build.mjs"
   },
   "keywords": [
     "task-management",
@@ -21,5 +22,8 @@
     "exceljs": "^4.4.0",
     "express": "^4.18.2",
     "multer": "^1.4.5-lts.1"
+  },
+  "devDependencies": {
+    "esbuild": "^0.24.2"
   }
 }
