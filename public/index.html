@@ -4,6 +4,8 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>K-IoT PLUS 업무관리</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -17,7 +19,8 @@
       <button data-view="settings">⚙ 기준정보</button>
     </nav>
     <div class="userbox">
-      <span>사용자</span>
+      <span class="save-state" id="saveState"></span>
+      <label for="currentUser">사용자</label>
       <select id="currentUser" title="로그인 기능이 없으므로 본인 이름을 선택하세요"></select>
       <button class="bell" id="bellBtn" title="알림">🔔<span class="cnt" id="bellCnt" hidden></span></button>
     </div>
@@ -29,6 +32,7 @@
     <section class="view on" id="view-templates">
       <h2>업무 표준 (업무 리스트)</h2>
       <p class="desc">업무분장(R&amp;R)의 대·중·소분류 업무를 주기별로 등록합니다. 주기 업무는 <b>확정(활성)</b>되면 기준일·주기에 따라 업무가 자동 생성되어 담당자에게 전달되고, 발생 시 업무는 <b>[발생 등록]</b>으로 생성합니다.</p>
+      <div class="notice" id="tplNotice" hidden></div>
       <div class="tabs" id="tplTabs"></div>
       <div class="toolbar">
         <input type="text" id="tplSearch" placeholder="업무명·분류 검색" />
@@ -76,7 +80,7 @@
         <span style="flex:1"></span>
         <div class="legend" id="calLegend"></div>
       </div>
-      <div class="cal" id="cal"></div>
+      <div class="cal-wrap"><div class="cal" id="cal"></div></div>
     </section>
 
     <!-- ④ 개인별 현황 -->
@@ -137,6 +141,7 @@
 
   <div id="modalRoot"></div>
   <div id="drawerRoot"></div>
+  <div id="confirmRoot"></div>
   <script src="app.js"></script>
 </body>
 </html>

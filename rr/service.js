@@ -201,18 +201,22 @@ export function importParsed(parsed) {
 }
 
 // ---------------- 업무(인스턴스) 생성 ----------------
-function notify(memberIdsList, taskId, type, message, exceptId) {
+function notify(memberIdsList, taskId, type, message, exceptId, key) {
   const db = getDb();
   for (const mid of new Set(memberIdsList)) {
     if (mid === exceptId) continue;
-    db.notifications.push({ id: newId('n'), memberId: mid, taskId, type, message, at: nowIso(), read: false });
+    // key가 있으면 결정적 ID 사용 → 여러 화면이 동시에 생성해도 중복 알림이 생기지 않음
+    const id = key ? `n_${key}_${mid}` : newId('n');
+    if (key && db.notifications.some((n) => n.id === id)) continue;
+    db.notifications.push({ id, memberId: mid, taskId, type, message, at: nowIso(), read: false });
   }
   if (db.notifications.length > 5000) db.notifications = db.notifications.slice(-5000);
 }
 
 function makeTask(t, { plannedDate, dueDate, kind, memo, actorId }) {
   const task = {
-    id: newId('k'), templateId: t.id, kind, cycleType: t.cycleType,
+    // 주기 업무는 (업무표준, 발생일)로 결정되는 ID → 중복 생성 방지
+    id: kind === 'cycle' ? `k_${t.id}_${plannedDate}` : newId('k'), templateId: t.id, kind, cycleType: t.cycleType,
     cat1: t.cat1, cat2: t.cat2, cat3: t.cat3, detail: t.detail,
     mains: [...t.mains], subs: [...t.subs],
     plannedDate, dueDate: dueDate || plannedDate, dueConfirmed: !!dueDate && kind === 'occur',
@@ -221,7 +225,7 @@ function makeTask(t, { plannedDate, dueDate, kind, memo, actorId }) {
   if (memo) task.logs.push({ id: newId('l'), at: nowIso(), authorId: actorId || null, text: str(memo), system: false });
   getDb().tasks.push(task);
   const label = kind === 'occur' ? '발생 업무' : `${t.cycleType} 업무`;
-  notify([...task.mains, ...task.subs], task.id, 'assigned', `[${label}] ${t.cat3} (처리기한 ${task.dueDate})`, actorId);
+  notify([...task.mains, ...task.subs], task.id, 'assigned', `[${label}] ${t.cat3} (처리기한 ${task.dueDate})`, actorId, kind === 'cycle' ? task.id : null);
   return task;
 }
 

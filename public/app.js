@@ -21,6 +21,24 @@
     setTimeout(() => t.remove(), err ? 4000 : 2200);
   }
 
+  // 브라우저 기본 확인창 대신 화면 내 확인 창 (claude.ai 화면에서는 기본 확인창이 동작하지 않음)
+  function ask(message, okLabel = '확인', danger = false) {
+    return new Promise((resolve) => {
+      const root = document.getElementById('confirmRoot');
+      root.innerHTML = `<div class="overlay"><div class="modal ask" role="alertdialog" aria-modal="true">
+        <div class="bd"><p class="ask-msg"></p></div>
+        <div class="ft"><button class="btn" data-v="0">취소</button><button class="btn ${danger ? 'danger-fill' : 'primary'}" data-v="1">${esc(okLabel)}</button></div></div></div>`;
+      root.querySelector('.ask-msg').textContent = message;
+      const done = (v) => { root.innerHTML = ''; resolve(v); };
+      root.querySelector('.overlay').addEventListener('click', (e) => {
+        const b = e.target.closest('button[data-v]');
+        if (b) done(b.dataset.v === '1');
+        else if (e.target.classList.contains('overlay')) done(false);
+      });
+      root.querySelector('button[data-v="1"]').focus();
+    });
+  }
+
   async function api(method, url, body) {
     const opt = { method, headers: { 'x-rr-member': S.user || '' } };
     if (body instanceof FormData) opt.body = body;
@@ -111,6 +129,10 @@
       && (!st || (st === 'review' ? t.needsReview : st === 'active' ? t.active && !t.needsReview : !t.active && !t.needsReview)));
   }
   function renderTemplates() {
+    const review = S.templates.filter((t) => t.needsReview).length;
+    const nt = $('#tplNotice');
+    nt.hidden = !review;
+    if (review) nt.innerHTML = `<b>기준일 확인 필요 ${review}건</b><span>엑셀에는 실행 날짜가 없어 제안값으로 채웠습니다. 기준일을 확인한 뒤 확정해야 업무가 생성됩니다.</span><button class="btn sm" id="tplShowReview">확인 필요 업무만 보기</button>`;
     const tabs = ['전체', ...S.meta.cycleTypes];
     $('#tplTabs').innerHTML = tabs.map((c) => {
       const n = c === '전체' ? S.templates.length : S.templates.filter((t) => t.cycleType === c).length;
@@ -123,7 +145,7 @@
       <td><b>${esc(t.cat3)}</b>${t.automation && t.automation !== '-' ? ` <span class="chip" title="자동화 여부">${esc(t.automation)}</span>` : ''}</td>
       <td><div class="sub">${esc(t.detail)}</div></td>
       <td>${chips(t.mains, true)}</td><td>${chips(t.subs)}</td>
-      <td><span class="badge b-gray">${t.cycleType === '발생시' ? '발생 시' : esc(t.cycleType)}</span><div class="sub" style="white-space:pre-line">${t.cycleType === '발생시' ? '' : esc(t.scheduleText.replace(' · ', '\n'))}</div></td>
+      <td><span class="badge b-gray">${t.cycleType === '발생시' ? '발생 시' : esc(t.cycleType)}</span><div class="sub" style="white-space:pre-line">${t.cycleType === '발생시' ? '' : esc(t.scheduleText.replace(/^매(일|주|월|분기|년) · /, '').replace(' · ', '\n'))}</div></td>
       <td>${tplStateBadge(t)}${t.note ? `<div class="sub">${esc(t.note)}</div>` : ''}</td>
       <td style="white-space:nowrap">
         <button class="btn sm" data-act="edit">수정</button>
@@ -297,6 +319,10 @@
     });
     ['#tplSearch', '#tplCat1', '#tplMember', '#tplState'].forEach((s) => $(s).addEventListener('input', renderTemplates));
     $('#tplNew').addEventListener('click', () => openTemplateForm(null));
+    $('#tplNotice').addEventListener('click', (e) => {
+      if (e.target.id !== 'tplShowReview') return;
+      S.tplTab = '전체'; $('#tplState').value = 'review'; renderTemplates();
+    });
     $('#tplTable').addEventListener('click', safe(async (e) => {
       if (e.target.id === 'tplAll') { $$('.tplChk').forEach((c) => { c.checked = e.target.checked; }); return; }
       const b = e.target.closest('button[data-act]');
@@ -304,7 +330,7 @@
       const t = S.templates.find((x) => x.id === b.closest('tr').dataset.id);
       if (b.dataset.act === 'edit') openTemplateForm(t);
       if (b.dataset.act === 'occur') openOccurForm(t);
-      if (b.dataset.act === 'del' && confirm(`'${t.cat3}' 업무 표준을 삭제할까요?\n이미 생성된 업무 기록은 유지됩니다.`)) {
+      if (b.dataset.act === 'del' && await ask(`'${t.cat3}' 업무 표준을 삭제할까요?\n이미 생성된 업무 기록은 유지됩니다.`, '삭제', true)) {
         await api('DELETE', `/templates/${t.id}`);
         toast('삭제했습니다.');
         await reloadAll();
@@ -313,7 +339,7 @@
     const bulk = (active) => safe(async () => {
       const ids = $$('.tplChk:checked').map((c) => c.value);
       if (!ids.length) { toast('업무를 선택해 주세요.', true); return; }
-      if (active && !confirm(`${ids.length}건을 확정(사용)합니다.\n주기 업무는 설정된 기준일·주기대로 업무가 생성되어 담당자에게 전달됩니다. 계속할까요?`)) return;
+      if (active && !await ask(`${ids.length}건을 확정(사용)합니다.\n주기 업무는 설정된 기준일·주기대로 업무가 생성되어 담당자에게 전달됩니다. 계속할까요?`, '확정')) return;
       const r = await api('POST', '/templates/bulk-active', { ids, active });
       toast(`${r.updated}건 ${active ? '확정' : '중지'}했습니다.`);
       await reloadAll();
@@ -397,7 +423,7 @@
           <div style="margin-top:6px;text-align:right"><button class="btn primary" id="dLogAdd">현황 등록</button></div>
         </div>
         <div class="sec"><h4>첨부 파일</h4>
-          <ul class="files">${k.files.map((f) => `<li>📄 <a href="/api/rr/files/${esc(f.id)}">${esc(f.name)}</a><small>${esc(fmtSize(f.size))} · ${esc(f.uploaderId ? mName(f.uploaderId) : '')} · ${esc(fmtTime(f.at))}</small><button class="btn sm danger" data-del-file="${esc(f.id)}">삭제</button></li>`).join('') || '<li class="hint">첨부 파일이 없습니다.</li>'}</ul>
+          <ul class="files">${k.files.map((f) => `<li>📄 <a href="/api/rr/files/${esc(f.id)}" data-file="${esc(f.id)}">${esc(f.name)}</a><small>${esc(fmtSize(f.size))} · ${esc(f.uploaderId ? mName(f.uploaderId) : '')} · ${esc(fmtTime(f.at))}</small><button class="btn sm danger" data-del-file="${esc(f.id)}">삭제</button></li>`).join('') || '<li class="hint">첨부 파일이 없습니다.</li>'}</ul>
           <div class="row"><input type="file" id="dFiles" multiple /><button class="btn" id="dUpload">업로드</button><span class="hint">파일당 최대 ${esc(S.meta.maxFileMb)}MB, 한 번에 10개</span></div>
         </div>
         <div class="sec" style="text-align:right"><button class="btn danger" id="dDelete">업무 삭제</button></div>`}
@@ -431,13 +457,15 @@
       await reopen();
     }));
     $('.files', root).addEventListener('click', safe(async (e) => {
+      const link = e.target.closest('a[data-file]');
+      if (link && window.RR_DOWNLOAD) { e.preventDefault(); await window.RR_DOWNLOAD(link.dataset.file); return; }
       const b = e.target.closest('[data-del-file]');
-      if (!b || !confirm('파일을 삭제할까요?')) return;
+      if (!b || !await ask('파일을 삭제할까요?', '삭제', true)) return;
       await api('DELETE', `/tasks/${k.id}/files/${b.dataset.delFile}`);
       await reopen();
     }));
     $('#dDelete', root).addEventListener('click', safe(async () => {
-      if (!confirm('이 업무와 처리 현황·첨부 파일을 모두 삭제할까요? 되돌릴 수 없습니다.')) return;
+      if (!await ask('이 업무와 처리 현황·첨부 파일을 모두 삭제할까요? 되돌릴 수 없습니다.', '삭제', true)) return;
       await api('DELETE', `/tasks/${k.id}`);
       closeDrawer();
       toast('삭제했습니다.');
@@ -590,7 +618,7 @@ ${r.warnings.length ? `확인 필요:\n- ${r.warnings.map(esc).join('\n- ')}` : 
       }
       if (b.dataset.act === 'on') await api('PUT', `/members/${id}`, { active: true });
       if (b.dataset.act === 'del') {
-        if (!confirm('담당자를 삭제할까요? 업무에 지정된 경우 이력 보존을 위해 비활성화됩니다.')) return;
+        if (!await ask('담당자를 삭제할까요? 업무에 지정된 경우 이력 보존을 위해 비활성화됩니다.', '삭제', true)) return;
         const r = await api('DELETE', `/members/${id}`);
         toast(r.deactivated ? '업무 이력이 있어 비활성화했습니다.' : '삭제했습니다.');
       }
@@ -638,7 +666,7 @@ ${r.warnings.length ? `확인 필요:\n- ${r.warnings.map(esc).join('\n- ')}` : 
   }
 
   // ---------- 시작 ----------
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { $('#modalRoot').innerHTML = ''; closeDrawer(); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#confirmRoot').innerHTML) { $('#modalRoot').innerHTML = ''; closeDrawer(); } });
   $('#nav').addEventListener('click', (e) => { const b = e.target.closest('button[data-view]'); if (b) show(b.dataset.view); });
   $('#currentUser').addEventListener('change', (e) => {
     S.user = e.target.value;
@@ -648,7 +676,7 @@ ${r.warnings.length ? `확인 필요:\n- ${r.warnings.map(esc).join('\n- ')}` : 
     refreshView();
   });
 
-  safe(async () => {
+  const boot = safe(async () => {
     await loadBase();
     renderUserSelect();
     fillFilterSelects();
@@ -656,5 +684,10 @@ ${r.warnings.length ? `확인 필요:\n- ${r.warnings.map(esc).join('\n- ')}` : 
     bindTemplates(); bindTasks(); bindCalendar(); bindPeople(); bindSettings(); bindBell();
     show(S.members.length ? LS.get('rr.view', 'templates') : 'settings');
     refreshBell();
-  })();
+  });
+  // 다른 사람이 바꾼 내용이 들어오면 화면을 다시 그림 (공유 저장소 사용 시)
+  window.RR_REFRESH = safe(async () => { await reloadAll(); renderUserSelect(); refreshBell(); });
+  window.RR_TOAST = toast;
+  // 브라우저 버전은 저장소 준비 후 시작 (window.RR_DEFER)
+  if (window.RR_DEFER) window.RR_START = boot; else boot();
 })();
